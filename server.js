@@ -75,7 +75,10 @@ function requireAdmin(req, res, next) {
 
 // ---- 上传配置 ----
 const storage = multer.diskStorage({
-  destination: UPLOAD_DIR,
+  destination: (req, file, cb) => {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    cb(null, UPLOAD_DIR);
+  },
   filename: (req, file, cb) => {
     cb(null, crypto.randomUUID() + path.extname(file.originalname).toLowerCase());
   },
