@@ -113,8 +113,8 @@
 
   /* 画廊网格 */
   .grid {
-    display: grid; gap: 20px;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(6, 1fr);
   }
   .card {
     position: relative;
@@ -169,8 +169,16 @@
   }
   .lightbox-close:hover { opacity: 1; }
 
+  @media (max-width: 1200px) {
+    .grid { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
   @media (max-width: 600px) {
-    .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .container { padding: 20px 14px 60px; }
     .header h1 { font-size: 20px; }
     .toolbar { gap: 8px; }
@@ -179,7 +187,7 @@
   }
 
   @media (max-width: 380px) {
-    .grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   }
 </style>
 </head>
