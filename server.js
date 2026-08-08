@@ -30,7 +30,7 @@ if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // ---- 动图判定：按扩展名简单判断 ----
-const ANIMATED_EXTS = new Set(['gif', 'webp']);
+const ANIMATED_EXTS = new Set(['gif']);
 
 // 返回 true=动图，false=静态
 function detectAnimated(ext) {
