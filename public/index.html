@@ -165,7 +165,7 @@
     flex-direction: column; padding: 40px 20px;
   }
   .lightbox.open { display: flex; }
-  .lightbox img {
+  .lightbox img, .lightbox video {
     max-width: 90vw; max-height: 78vh; object-fit: contain; border-radius: 6px;
     box-shadow: 0 10px 60px rgba(0,0,0,.5);
   }
@@ -239,6 +239,7 @@
 <div class="lightbox" id="lightbox">
   <button class="lightbox-close" id="lbClose">×</button>
   <img id="lbImg" alt="">
+  <video id="lbVideo" controls playsinline style="display:none"></video>
   <div class="lightbox-bar">
     <a id="lbDownload" href="#" download>下载原图</a>
   </div>
@@ -254,6 +255,7 @@ const themeBtn = document.getElementById('themeBtn');
 const typeTabs = document.getElementById('typeTabs');
 const lightbox = document.getElementById('lightbox');
 const lbImg = document.getElementById('lbImg');
+const lbVideo = document.getElementById('lbVideo');
 const lbDownload = document.getElementById('lbDownload');
 
 let currentList = [];
@@ -321,12 +323,26 @@ function render() {
 
     const thumbWrap = document.createElement('div');
     thumbWrap.className = 'thumb-wrap';
-    const thumb = document.createElement('img');
-    thumb.className = 'thumb';
-    thumb.src = src;
-    thumb.loading = 'lazy';
-    thumb.alt = img.originalName;
-    thumbWrap.appendChild(thumb);
+    if (img.ext === 'webm') {
+      const video = document.createElement('video');
+      video.className = 'thumb';
+      video.src = src;
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.setAttribute('preload', 'metadata');
+      video.addEventListener('mouseenter', () => video.play().catch(() => {}));
+      video.addEventListener('mouseleave', () => video.pause());
+      video.addEventListener('click', (e) => { e.stopPropagation(); });
+      thumbWrap.appendChild(video);
+    } else {
+      const thumb = document.createElement('img');
+      thumb.className = 'thumb';
+      thumb.src = src;
+      thumb.loading = 'lazy';
+      thumb.alt = img.originalName;
+      thumbWrap.appendChild(thumb);
+    }
 
     const checkbox = document.createElement('div');
     checkbox.className = 'card-check';
@@ -352,8 +368,19 @@ function render() {
     `;
 
     thumbWrap.addEventListener('click', () => {
-      lbImg.src = src;
       lbDownload.href = src + '?download=1';
+      if (img.ext === 'webm') {
+        lbImg.style.display = 'none';
+        lbImg.src = '';
+        lbVideo.style.display = 'block';
+        lbVideo.src = src;
+      } else {
+        lbVideo.style.display = 'none';
+        lbVideo.removeAttribute('src');
+        lbVideo.load();
+        lbImg.style.display = 'block';
+        lbImg.src = src;
+      }
       lightbox.classList.add('open');
     });
 
@@ -389,7 +416,13 @@ batchBtn.addEventListener('click', () => {
   render();
 });
 
-function closeLightbox() { lightbox.classList.remove('open'); lbImg.src = ''; }
+function closeLightbox() {
+  lightbox.classList.remove('open');
+  lbImg.src = '';
+  lbVideo.pause();
+  lbVideo.removeAttribute('src');
+  lbVideo.load();
+}
 
 document.getElementById('lbClose').addEventListener('click', closeLightbox);
 lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });

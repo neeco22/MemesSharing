@@ -100,9 +100,9 @@
 
   .preview-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 16px; }
   .preview-item { position: relative; }
-  .preview-item img {
+  .preview-item img, .preview-item video {
     width: 100%; height: 90px; object-fit: cover; border-radius: 8px;
-    border: 1px solid var(--border); display: block;
+    border: 1px solid var(--border); display: block; background: var(--bg-soft);
   }
   .preview-item .rm {
     position: absolute; top: -6px; right: -6px; width: 20px; height: 20px;
@@ -177,12 +177,12 @@
       <div class="dropzone" id="dropzone">
         <span class="big">＋</span>
         点击选择或拖拽图片到这里
-        <input type="file" id="fileInput" accept="image/*" multiple>
+        <input type="file" id="fileInput" accept="image/*,.webm,.webp" multiple>
       </div>
       <div class="preview-list" id="previewList"></div>
       <button class="btn upload-btn" id="uploadBtn" disabled>开始上传</button>
       <div class="msg" id="msg"></div>
-      <div class="hint">支持 JPG / PNG / GIF / WebP / SVG 等格式 · 单张最大 50MB</div>
+      <div class="hint">支持 JPG / PNG / GIF / WebP / WebM / SVG 等格式 · 单张最大 50MB</div>
     </div>
 
     <div class="admin">
@@ -304,13 +304,22 @@ function renderPreview() {
   selectedFiles.forEach((f, i) => {
     const item = document.createElement('div');
     item.className = 'preview-item';
-    const img = document.createElement('img');
-    img.src = URL.createObjectURL(f);
+    const url = URL.createObjectURL(f);
+    if (/\.webm$/i.test(f.name)) {
+      const video = document.createElement('video');
+      video.src = url;
+      video.muted = true;
+      video.preload = 'metadata';
+      item.appendChild(video);
+    } else {
+      const img = document.createElement('img');
+      img.src = url;
+      item.appendChild(img);
+    }
     const rm = document.createElement('button');
     rm.className = 'rm';
     rm.textContent = '×';
     rm.onclick = () => { selectedFiles.splice(i, 1); renderPreview(); };
-    item.appendChild(img);
     item.appendChild(rm);
     previewList.appendChild(item);
   });

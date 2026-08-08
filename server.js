@@ -30,7 +30,7 @@ if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // ---- 动图判定：按扩展名简单判断 ----
-const ANIMATED_EXTS = new Set(['gif']);
+const ANIMATED_EXTS = new Set(['gif', 'webm']);
 
 // 返回 true=动图，false=静态
 function detectAnimated(ext) {
@@ -109,10 +109,10 @@ const storage = multer.diskStorage({
 });
 
 function fileFilter(req, file, cb) {
-  const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico', '.avif'];
+  const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.webm', '.svg', '.bmp', '.ico', '.avif'];
   const ext = path.extname(file.originalname).toLowerCase();
   if (allowed.includes(ext)) return cb(null, true);
-  cb(new Error('仅支持 JPG / PNG / GIF / WebP / SVG / BMP / ICO / AVIF 格式'));
+  cb(new Error('仅支持 JPG / PNG / GIF / WebP / WebM / SVG / BMP / ICO / AVIF 格式'));
 }
 
 const upload = multer({
