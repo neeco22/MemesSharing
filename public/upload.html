@@ -127,6 +127,12 @@
   }
   .manage-item .nm { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
   .manage-item .nm b { color: var(--text); font-weight: 500; }
+  .tag {
+    display: inline-block; font-size: 11px; line-height: 1;
+    padding: 3px 5px; margin-right: 6px; border-radius: 4px;
+    background: var(--bg-soft); color: var(--muted); vertical-align: middle;
+  }
+  .tag.tag-anim { background: var(--accent-soft); color: var(--accent); }
   .manage-item button {
     border: 1px solid var(--danger); color: var(--danger); background: none;
     border-radius: 6px; padding: 4px 12px; font-size: 12px; cursor: pointer;
@@ -370,7 +376,10 @@ async function loadManage() {
     item.className = 'manage-item';
     const nm = document.createElement('span');
     nm.className = 'nm';
-    nm.innerHTML = `<b>${img.originalName}</b>`;
+    const tag = img.animated === true
+      ? '<span class="tag tag-anim">动</span>'
+      : '<span class="tag">静</span>';
+    nm.innerHTML = `${tag}<b>${img.originalName}</b>`;
     const btn = document.createElement('button');
     btn.textContent = '删除';
     btn.onclick = async () => {

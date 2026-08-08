@@ -29,6 +29,63 @@ if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
+// ---- 动图识别：按帧数精确判断 ----
+function countGifFrames(buf) {
+  if (buf.length < 13 || buf.toString('latin1', 0, 6) !== 'GIF87a' && buf.toString('latin1', 0, 6) !== 'GIF89a') {
+    return 0;
+  }
+  let pos = 13;
+  const len = buf.length;
+  if (buf[10] & 0x80) pos += 3 * 2 ** ((buf[10] & 0x07) + 1); // 全局颜色表
+  let frames = 0;
+  while (pos < len) {
+    const marker = buf[pos];
+    if (marker === 0x3b) break; // trailer
+    if (marker === 0x21) { // extension
+      const label = buf[pos + 1];
+      if (label === 0xf9) { // GCE 固定 8 字节
+        pos += 8;
+      } else {
+        pos += 2;
+        while (pos < len && buf[pos] !== 0) pos += buf[pos] + 1; // 子块
+        pos++;
+      }
+    } else if (marker === 0x2c) { // image descriptor
+      frames++;
+      pos += 10;
+      if (buf[pos] & 0x80) pos += 3 * 2 ** ((buf[pos] & 0x07) + 1); // 局部颜色表
+      pos++; // LZW 最小码长
+      while (pos < len && buf[pos] !== 0) pos += buf[pos] + 1; // 图像数据子块
+      pos++;
+    } else {
+      break;
+    }
+  }
+  return frames;
+}
+
+function countWebpFrames(buf) {
+  if (buf.length < 12 || buf.toString('latin1', 0, 4) !== 'RIFF' || buf.toString('latin1', 8, 12) !== 'WEBP') {
+    return 0;
+  }
+  let pos = 12;
+  const len = buf.length;
+  while (pos + 8 <= len) {
+    const chunkId = buf.toString('latin1', pos, pos + 4);
+    const size = buf.readUInt32LE(pos + 4);
+    if (chunkId === 'ANIM') return 1;
+    pos += 8 + size + (size % 2); // chunk 对齐到偶数
+  }
+  return 0;
+}
+
+// 返回 true=动图，false=静态
+function detectAnimated(ext, filePath) {
+  if (ext === 'gif') return countGifFrames(fs.readFileSync(filePath)) > 1;
+  if (ext === 'webp') return countWebpFrames(fs.readFileSync(filePath)) > 0;
+  return false;
+}
+
 // ---- 数据层：图片元数据持久化到 JSON ----
 let images = []; // { id, filename, ext, originalName, size, width, height, uploadedAt }
 
@@ -39,6 +96,26 @@ async function loadData() {
     if (!Array.isArray(images)) images = [];
   } catch {
     images = [];
+  }
+}
+
+// 启动时扫描已有图片，补全缺失的 animated 字段
+async function backfillAnimated() {
+  let changed = false;
+  for (const img of images) {
+    if (img.animated !== undefined) continue;
+    const filePath = path.join(UPLOAD_DIR, img.filename);
+    try {
+      img.animated = detectAnimated(img.ext, filePath);
+      changed = true;
+    } catch {
+      img.animated = false; // 文件缺失或损坏，按静态处理
+      changed = true;
+    }
+  }
+  if (changed) {
+    await saveData();
+    console.log(`已为 ${images.filter((i) => i.animated !== undefined).length} 张图片补全动/静分类`);
   }
 }
 
@@ -129,11 +206,17 @@ app.get('/api/auth', requireAdmin, (req, res) => {
 // ---- 静态资源 ----
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ---- API：图片列表（支持排序与搜索）----
+// ---- API：图片列表（支持排序与分类筛选）----
 app.get('/api/images', (req, res) => {
-  const { sort = 'newest' } = req.query;
+  const { sort = 'newest', type = '' } = req.query;
 
   let result = [...images];
+
+  if (type === 'animated') {
+    result = result.filter((img) => img.animated === true);
+  } else if (type === 'static') {
+    result = result.filter((img) => img.animated !== true);
+  }
 
   switch (sort) {
     case 'oldest':
@@ -160,6 +243,7 @@ app.post('/api/upload', requireAdmin, upload.single('image'), async (req, res) =
   const file = req.file;
   let width = null;
   let height = null;
+  let animated = false;
 
   try {
     const dim = await imageSizeFromFile(file.path);
@@ -167,6 +251,12 @@ app.post('/api/upload', requireAdmin, upload.single('image'), async (req, res) =
     height = dim.height ?? null;
   } catch {
     // 某些图片（如 SVG 或损坏文件）可能读不出尺寸，忽略即可
+  }
+
+  try {
+    animated = detectAnimated(file.originalname.split('.').pop().toLowerCase(), file.path);
+  } catch {
+    // 识别失败按静态处理
   }
 
   const img = {
@@ -177,6 +267,7 @@ app.post('/api/upload', requireAdmin, upload.single('image'), async (req, res) =
     size: file.size,
     width,
     height,
+    animated,
     uploadedAt: Date.now(),
   };
 
@@ -259,6 +350,7 @@ app.use((err, req, res, next) => {
 });
 
 await loadData();
+await backfillAnimated();
 app.listen(PORT, () => {
   console.log(`图片分享站已启动: http://localhost:${PORT}`);
   console.log(`图片目录: ${UPLOAD_DIR}`);

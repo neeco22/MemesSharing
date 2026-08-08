@@ -93,6 +93,20 @@
   .batch-btn:hover { border-color: var(--accent); color: var(--accent); }
   .batch-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+  /* 分类筛选按钮组 */
+  .type-tabs {
+    display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .type-tab {
+    padding: 10px 14px; font-size: 14px; font-weight: 500; font-family: inherit;
+    border: none; background: var(--bg); color: var(--muted); cursor: pointer;
+    transition: all .15s; white-space: nowrap;
+  }
+  .type-tab + .type-tab { border-left: 1px solid var(--border); }
+  .type-tab:hover { color: var(--text); }
+  .type-tab.active { background: var(--accent); color: #fff; }
+
   /* 选择模式 */
   .grid.selecting .card { cursor: pointer; }
   .grid.selecting .thumb-wrap { cursor: pointer; }
@@ -209,6 +223,11 @@
       <option value="oldest">🕰️ 最早上传</option>
       <option value="downloads">🔥 下载最多</option>
     </select>
+    <div class="type-tabs" id="typeTabs">
+      <button class="type-tab active" data-type="">全部</button>
+      <button class="type-tab" data-type="animated">🎬 动态</button>
+      <button class="type-tab" data-type="static">🖼️ 静态</button>
+    </div>
     <button class="batch-btn" id="batchBtn">⬇️ 批量下载</button>
     <span class="count" id="count"></span>
   </div>
@@ -232,6 +251,7 @@ const countEl = document.getElementById('count');
 const sortSelect = document.getElementById('sortSelect');
 const batchBtn = document.getElementById('batchBtn');
 const themeBtn = document.getElementById('themeBtn');
+const typeTabs = document.getElementById('typeTabs');
 const lightbox = document.getElementById('lightbox');
 const lbImg = document.getElementById('lbImg');
 const lbDownload = document.getElementById('lbDownload');
@@ -239,6 +259,7 @@ const lbDownload = document.getElementById('lbDownload');
 let currentList = [];
 let selectMode = false;
 const selected = new Set();
+let currentType = '';
 
 // ---- 主题切换 ----
 function applyTheme(theme) {
@@ -275,7 +296,8 @@ function formatDate(ts) {
 
 async function loadImages() {
   const sort = sortSelect.value;
-  const res = await fetch(`/api/images?sort=${sort}`);
+  const type = currentType;
+  const res = await fetch(`/api/images?sort=${sort}&type=${type}`);
   currentList = await res.json();
   render();
 }
@@ -374,6 +396,23 @@ lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLigh
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
 
 sortSelect.addEventListener('change', loadImages);
+
+// 分类切换
+typeTabs.addEventListener('click', (e) => {
+  const btn = e.target.closest('.type-tab');
+  if (!btn) return;
+  typeTabs.querySelectorAll('.type-tab').forEach((t) => t.classList.remove('active'));
+  btn.classList.add('active');
+  currentType = btn.dataset.type;
+  selected.clear();
+  if (selectMode) {
+    selectMode = false;
+    batchBtn.classList.remove('active');
+    batchBtn.textContent = '⬇️ 批量下载';
+    grid.classList.remove('selecting');
+  }
+  loadImages();
+});
 
 loadImages();
 </script>
