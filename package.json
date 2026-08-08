@@ -1,0 +1,22 @@
+{
+  "name": "image-share",
+  "version": "1.0.0",
+  "description": "简约图片分享站：仅站长上传，访客免登录下载",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "archiver": "^8.0.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "image-size": "^2.0.2",
+    "multer": "^2.2.0"
+  }
+}

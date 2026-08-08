@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemesSharing · 上传</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖼️</text></svg>">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f7f7f7;
+    --text: #1a1a1a;
+    --muted: #888888;
+    --border: #e5e5e5;
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.08);
+    --danger: #dc2626;
+    --danger-soft: rgba(220, 38, 38, 0.08);
+    --ok-bg: #ecfdf5; --ok-text: #065f46;
+    --err-bg: #fef2f2; --err-text: #991b1b;
+    --radius: 10px;
+  }
+  html[data-theme="dark"] {
+    --bg: #111316;
+    --bg-soft: #1a1d21;
+    --text: #e8eaed;
+    --muted: #9aa0a6;
+    --border: #2a2d31;
+    --accent: #6ea8fe;
+    --accent-soft: rgba(110, 168, 254, 0.12);
+    --danger: #f87171;
+    --danger-soft: rgba(248, 113, 113, 0.1);
+    --ok-bg: #0b1f16; --ok-text: #6ee7b7;
+    --err-bg: #2b1315; --err-text: #fca5a5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    transition: background .2s, color .2s;
+  }
+  .container { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+
+  .top {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px;
+  }
+  .top h1 { font-size: 20px; font-weight: 600; }
+  .top .right { display: flex; align-items: center; gap: 16px; }
+  .theme-btn {
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+    background: transparent; color: var(--muted); font-size: 15px;
+    transition: all .15s;
+  }
+  .theme-btn:hover { color: var(--text); border-color: var(--text); transform: rotate(15deg); }
+  .back { color: var(--muted); text-decoration: none; font-size: 14px; }
+  .back:hover { color: var(--text); }
+  .logout {
+    color: var(--muted); background: none; border: none; cursor: pointer;
+    font-size: 13px; text-decoration: underline; padding: 0;
+  }
+  .logout:hover { color: var(--text); }
+
+  .card {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 24px; margin-bottom: 24px;
+  }
+  .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 14px; }
+
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  input[type="text"], input[type="password"] {
+    width: 100%; padding: 10px 14px; font-size: 14px;
+    border: 1px solid var(--border); border-radius: var(--radius); outline: none;
+    transition: border-color .15s; margin-bottom: 14px;
+    background: var(--bg); color: var(--text);
+  }
+  input[type="text"]:focus, input[type="password"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  .btn {
+    width: 100%; padding: 12px; font-size: 15px; font-weight: 600;
+    border: none; border-radius: var(--radius); cursor: pointer;
+    background: var(--accent); color: #fff; transition: opacity .15s;
+  }
+  .btn:hover { opacity: .9; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .dropzone {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 44px 20px; text-align: center; cursor: pointer;
+    transition: all .15s; font-size: 14px; color: var(--muted);
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); color: var(--accent); background: #f5f8ff; }
+  .dropzone .big { font-size: 30px; display: block; margin-bottom: 10px; }
+  input[type="file"] { display: none; }
+
+  .upload-btn { margin-top: 16px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
+
+  .preview-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 16px; }
+  .preview-item { position: relative; }
+  .preview-item img {
+    width: 100%; height: 90px; object-fit: cover; border-radius: 8px;
+    border: 1px solid var(--border); display: block;
+  }
+  .preview-item .rm {
+    position: absolute; top: -6px; right: -6px; width: 20px; height: 20px;
+    border-radius: 50%; background: var(--danger); color: #fff; border: none;
+    cursor: pointer; font-size: 12px; line-height: 1;
+  }
+
+  .msg { font-size: 14px; padding: 10px 14px; border-radius: 8px; margin-top: 16px; display: none; }
+  .msg.ok { display: block; background: var(--ok-bg); color: var(--ok-text); }
+  .msg.err { display: block; background: var(--err-bg); color: var(--err-text); }
+
+  .admin { margin-top: 32px; border-top: 1px solid var(--border); padding-top: 24px; }
+  .admin-toggle {
+    font-size: 12px; color: var(--muted); background: none; border: none; cursor: pointer;
+    text-decoration: underline; padding: 0;
+  }
+
+  .manage-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .manage-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px;
+  }
+  .manage-item .nm { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+  .manage-item .nm b { color: var(--text); font-weight: 500; }
+  .manage-item button {
+    border: 1px solid var(--danger); color: var(--danger); background: none;
+    border-radius: 6px; padding: 4px 12px; font-size: 12px; cursor: pointer;
+    transition: all .15s; white-space: nowrap;
+  }
+  .manage-item button:hover { background: var(--danger); color: #fff; }
+
+  @media (max-width: 600px) {
+    .container { padding: 24px 14px 60px; }
+    .card { padding: 18px 16px; }
+    .preview-list { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+    .dropzone { padding: 32px 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="top">
+    <h1>MemesSharing · 上传</h1>
+    <div class="right">
+      <button class="theme-btn" id="themeBtn" title="切换主题" aria-label="切换深色/浅色模式">🌙</button>
+      <button class="logout" id="logoutBtn" style="display:none">退出登录</button>
+      <a class="back" href="/">← 返回画廊</a>
+    </div>
+  </div>
+
+  <!-- 登录表单 -->
+  <div class="card" id="loginCard">
+    <h2>管理员登录</h2>
+    <label>用户名</label>
+    <input type="text" id="username" autocomplete="username">
+    <label>密码</label>
+    <input type="password" id="loginPassword" autocomplete="current-password">
+    <button class="btn" id="loginBtn">登 录</button>
+    <div class="msg" id="loginMsg"></div>
+  </div>
+
+  <!-- 登录后的管理区 -->
+  <div id="adminPanel" style="display:none">
+    <div class="card">
+      <h2>选择图片</h2>
+      <div class="dropzone" id="dropzone">
+        <span class="big">＋</span>
+        点击选择或拖拽图片到这里
+        <input type="file" id="fileInput" accept="image/*" multiple>
+      </div>
+      <div class="preview-list" id="previewList"></div>
+      <button class="btn upload-btn" id="uploadBtn" disabled>开始上传</button>
+      <div class="msg" id="msg"></div>
+      <div class="hint">支持 JPG / PNG / GIF / WebP / SVG 等格式 · 单张最大 50MB</div>
+    </div>
+
+    <div class="admin">
+      <button class="admin-toggle" id="adminToggle">管理已上传图片</button>
+      <div class="manage-list" id="manageList" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const themeBtn = document.getElementById('themeBtn');
+
+// ---- 主题切换 ----
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  themeBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('theme', theme);
+}
+
+const savedTheme = localStorage.getItem('theme');
+const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+if (savedTheme) {
+  applyTheme(savedTheme);
+} else {
+  applyTheme(systemDark ? 'dark' : 'light');
+}
+
+themeBtn.addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+});
+
+const loginCard = document.getElementById('loginCard');
+const adminPanel = document.getElementById('adminPanel');
+const logoutBtn = document.getElementById('logoutBtn');
+const usernameInput = document.getElementById('username');
+const loginPasswordInput = document.getElementById('loginPassword');
+const loginBtn = document.getElementById('loginBtn');
+const loginMsg = document.getElementById('loginMsg');
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const previewList = document.getElementById('previewList');
+const uploadBtn = document.getElementById('uploadBtn');
+const msg = document.getElementById('msg');
+const adminToggle = document.getElementById('adminToggle');
+const manageList = document.getElementById('manageList');
+
+let selectedFiles = [];
+
+function showMsg(el, text, ok) {
+  el.textContent = text;
+  el.className = 'msg ' + (ok ? 'ok' : 'err');
+  if (ok) setTimeout(() => { el.className = 'msg'; }, 3000);
+}
+
+// ---- 登录状态检查与界面切换 ----
+function showLoggedIn() {
+  loginCard.style.display = 'none';
+  adminPanel.style.display = 'block';
+  logoutBtn.style.display = 'inline';
+}
+
+function showLoggedOut() {
+  loginCard.style.display = 'block';
+  adminPanel.style.display = 'none';
+  logoutBtn.style.display = 'none';
+}
+
+async function checkAuth() {
+  try {
+    const res = await fetch('/api/auth');
+    if (res.ok) showLoggedIn();
+    else showLoggedOut();
+  } catch {
+    showLoggedOut();
+  }
+}
+
+loginBtn.addEventListener('click', async () => {
+  const username = usernameInput.value.trim();
+  const password = loginPasswordInput.value;
+  if (!username || !password) { showMsg(loginMsg, '请输入用户名和密码', false); return; }
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = '登录中…';
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    if (res.ok) {
+      usernameInput.value = '';
+      loginPasswordInput.value = '';
+      showLoggedIn();
+      showMsg(msg, '登录成功', true);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      showMsg(loginMsg, data.error || '登录失败', false);
+    }
+  } catch {
+    showMsg(loginMsg, '网络错误', false);
+  }
+  loginBtn.disabled = false;
+  loginBtn.textContent = '登 录';
+});
+
+loginPasswordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginBtn.click(); });
+
+logoutBtn.addEventListener('click', async () => {
+  await fetch('/api/logout', { method: 'POST' });
+  showLoggedOut();
+});
+
+// ---- 上传 ----
+function renderPreview() {
+  previewList.innerHTML = '';
+  selectedFiles.forEach((f, i) => {
+    const item = document.createElement('div');
+    item.className = 'preview-item';
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(f);
+    const rm = document.createElement('button');
+    rm.className = 'rm';
+    rm.textContent = '×';
+    rm.onclick = () => { selectedFiles.splice(i, 1); renderPreview(); };
+    item.appendChild(img);
+    item.appendChild(rm);
+    previewList.appendChild(item);
+  });
+  uploadBtn.disabled = !selectedFiles.length;
+}
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('drag');
+  selectedFiles.push(...e.dataTransfer.files);
+  renderPreview();
+});
+fileInput.addEventListener('change', () => {
+  selectedFiles.push(...fileInput.files);
+  renderPreview();
+});
+
+uploadBtn.addEventListener('click', async () => {
+  if (!selectedFiles.length) return;
+
+  uploadBtn.disabled = true;
+  uploadBtn.textContent = '上传中…';
+  let okCount = 0;
+  let fail = [];
+
+  for (const file of selectedFiles) {
+    const fd = new FormData();
+    fd.append('image', file);
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      if (res.ok) okCount++;
+      else {
+        const data = await res.json().catch(() => ({}));
+        fail.push(`${file.name}: ${data.error || '上传失败'}`);
+      }
+    } catch {
+      fail.push(`${file.name}: 网络错误`);
+    }
+  }
+
+  uploadBtn.textContent = '开始上传';
+  uploadBtn.disabled = false;
+
+  if (fail.length) {
+    showMsg(msg, `成功 ${okCount} 张，失败：\n${fail.join('\n')}`, false);
+  } else {
+    selectedFiles = [];
+    renderPreview();
+    showMsg(msg, `已上传 ${okCount} 张图片`, true);
+  }
+});
+
+// ---- 管理：删除 ----
+async function loadManage() {
+  const res = await fetch('/api/images');
+  const list = await res.json();
+  manageList.innerHTML = '';
+  for (const img of list) {
+    const item = document.createElement('div');
+    item.className = 'manage-item';
+    const nm = document.createElement('span');
+    nm.className = 'nm';
+    nm.innerHTML = `<b>${img.originalName}</b>`;
+    const btn = document.createElement('button');
+    btn.textContent = '删除';
+    btn.onclick = async () => {
+      if (!confirm(`确定删除「${img.originalName}」？`)) return;
+      const res = await fetch(`/api/images/${img.id}`, { method: 'DELETE' });
+      if (res.ok) { showMsg(msg, '已删除', true); loadManage(); }
+      else { const data = await res.json().catch(() => ({})); showMsg(msg, data.error || '删除失败', false); }
+    };
+    item.appendChild(nm);
+    item.appendChild(btn);
+    manageList.appendChild(item);
+  }
+}
+
+adminToggle.addEventListener('click', () => {
+  const show = manageList.style.display === 'none';
+  manageList.style.display = show ? 'block' : 'none';
+  adminToggle.textContent = show ? '收起' : '管理已上传图片';
+  if (show) loadManage();
+});
+
+checkAuth();
+</script>
+</body>
+</html>

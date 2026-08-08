@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemesSharing</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖼️</text></svg>">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f7f7f7;
+    --text: #1a1a1a;
+    --muted: #888888;
+    --border: #e5e5e5;
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.08);
+    --card-hover: rgba(0, 0, 0, 0.08);
+    --radius: 10px;
+    --shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+  }
+  html[data-theme="dark"] {
+    --bg: #111316;
+    --bg-soft: #1a1d21;
+    --text: #e8eaed;
+    --muted: #9aa0a6;
+    --border: #2a2d31;
+    --accent: #6ea8fe;
+    --accent-soft: rgba(110, 168, 254, 0.12);
+    --card-hover: rgba(255, 255, 255, 0.06);
+    --shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    transition: background .2s, color .2s;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  /* 头部 */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; margin-bottom: 24px; flex-wrap: wrap;
+  }
+  .header h1 {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .header-links { display: flex; align-items: center; gap: 10px; }
+  .header-links a {
+    color: var(--muted); text-decoration: none; font-size: 14px;
+    padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px;
+    transition: all .15s;
+  }
+  .header-links a:hover { color: var(--text); border-color: var(--text); }
+  .theme-btn {
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+    background: transparent; color: var(--muted); font-size: 15px;
+    transition: all .15s;
+  }
+  .theme-btn:hover { color: var(--text); border-color: var(--text); transform: rotate(15deg); }
+
+  /* 工具栏 */
+  .toolbar { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; align-items: center; }
+  .sort {
+    appearance: none; -webkit-appearance: none;
+    padding: 10px 36px 10px 14px; font-size: 14px;
+    font-family: inherit; font-weight: 500; letter-spacing: 0.01em;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center;
+    color: var(--text); cursor: pointer; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .sort:hover { border-color: var(--muted); }
+  .sort:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .count { font-size: 13px; color: var(--muted); }
+
+  .batch-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 10px 16px; font-size: 14px; font-weight: 500; font-family: inherit;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--bg); color: var(--text); cursor: pointer;
+    transition: all .15s;
+  }
+  .batch-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .batch-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* 选择模式 */
+  .grid.selecting .card { cursor: pointer; }
+  .grid.selecting .thumb-wrap { cursor: pointer; }
+  .grid.selecting .card:hover { box-shadow: var(--shadow); }
+  .grid.selecting .card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .grid.selecting .card.selected .thumb { filter: brightness(.8); }
+  .card-check {
+    position: absolute; top: 8px; left: 8px; width: 26px; height: 26px;
+    border-radius: 50%; background: var(--bg); border: 2px solid var(--border);
+    display: none; align-items: center; justify-content: center;
+    font-size: 14px; color: transparent; z-index: 2; cursor: pointer;
+    transition: all .15s;
+  }
+  .grid.selecting .card-check { display: flex; }
+  .grid.selecting .card.selected .card-check {
+    background: var(--accent); border-color: var(--accent); color: #fff;
+  }
+
+  /* 画廊网格 */
+  .grid {
+    display: grid; gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+  .card {
+    position: relative;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; background: var(--bg); transition: box-shadow .15s, transform .15s;
+  }
+  .card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+  .thumb-wrap { aspect-ratio: 1 / 1; background: var(--bg-soft); cursor: zoom-in; overflow: hidden; }
+  .thumb {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    transition: transform .2s;
+  }
+  .thumb-wrap:hover .thumb { transform: scale(1.03); }
+  .card-body { padding: 10px 14px 14px; }
+  .card-meta { font-size: 12px; color: var(--muted); margin-bottom: 10px; line-height: 1.6; }
+  .card-actions { display: flex; align-items: center; justify-content: space-between; }
+  .download-btn {
+    text-decoration: none; font-size: 13px; color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 8px; padding: 5px 14px;
+    transition: all .15s; font-weight: 500;
+  }
+  .download-btn:hover { background: var(--accent); color: #fff; }
+  .date-tag { font-size: 11px; color: var(--muted); }
+
+  /* 空状态 */
+  .empty {
+    text-align: center; padding: 80px 20px; color: var(--muted); font-size: 14px;
+  }
+
+  /* 灯箱 */
+  .lightbox {
+    position: fixed; inset: 0; background: rgba(0,0,0,.85);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+    flex-direction: column; padding: 40px 20px;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img {
+    max-width: 90vw; max-height: 78vh; object-fit: contain; border-radius: 6px;
+    box-shadow: 0 10px 60px rgba(0,0,0,.5);
+  }
+  .lightbox-bar {
+    display: flex; align-items: center; gap: 12px; margin-top: 16px; color: #ddd; font-size: 13px;
+  }
+  .lightbox-bar a {
+    color: #fff; text-decoration: none; border: 1px solid rgba(255,255,255,.5);
+    padding: 6px 16px; border-radius: 8px; transition: all .15s;
+  }
+  .lightbox-bar a:hover { background: #fff; color: #000; }
+  .lightbox-close {
+    position: absolute; top: 16px; right: 20px; color: #fff; font-size: 28px;
+    cursor: pointer; line-height: 1; opacity: .7; background: none; border: none;
+  }
+  .lightbox-close:hover { opacity: 1; }
+
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .container { padding: 20px 14px 60px; }
+    .header h1 { font-size: 20px; }
+    .toolbar { gap: 8px; }
+    .sort { flex: 1; }
+    .download-btn { padding: 7px 14px; }
+  }
+
+  @media (max-width: 380px) {
+    .grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="header">
+    <div>
+      <h1>MemesSharing</h1>
+    </div>
+    <div class="header-links">
+      <button class="theme-btn" id="themeBtn" title="切换主题" aria-label="切换深色/浅色模式">🌙</button>
+      <a href="/upload.html">上传</a>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <select class="sort" id="sortSelect">
+      <option value="newest">✨ 最新上传</option>
+      <option value="oldest">🕰️ 最早上传</option>
+      <option value="downloads">🔥 下载最多</option>
+    </select>
+    <button class="batch-btn" id="batchBtn">⬇️ 批量下载</button>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">还没有图片</div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="lbClose">×</button>
+  <img id="lbImg" alt="">
+  <div class="lightbox-bar">
+    <a id="lbDownload" href="#" download>下载原图</a>
+  </div>
+</div>
+
+<script>
+const grid = document.getElementById('grid');
+const empty = document.getElementById('empty');
+const countEl = document.getElementById('count');
+const sortSelect = document.getElementById('sortSelect');
+const batchBtn = document.getElementById('batchBtn');
+const themeBtn = document.getElementById('themeBtn');
+const lightbox = document.getElementById('lightbox');
+const lbImg = document.getElementById('lbImg');
+const lbDownload = document.getElementById('lbDownload');
+
+let currentList = [];
+let selectMode = false;
+const selected = new Set();
+
+// ---- 主题切换 ----
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  themeBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('theme', theme);
+}
+
+const savedTheme = localStorage.getItem('theme');
+const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+if (savedTheme) {
+  applyTheme(savedTheme);
+} else {
+  applyTheme(systemDark ? 'dark' : 'light');
+}
+
+themeBtn.addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+});
+
+function formatSize(bytes) {
+  if (!bytes && bytes !== 0) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+function formatDate(ts) {
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+async function loadImages() {
+  const sort = sortSelect.value;
+  const res = await fetch(`/api/images?sort=${sort}`);
+  currentList = await res.json();
+  render();
+}
+
+function render() {
+  grid.innerHTML = '';
+  countEl.textContent = currentList.length ? `${currentList.length} 张` : '';
+  if (!currentList.length) {
+    empty.style.display = 'block';
+    batchBtn.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  batchBtn.style.display = 'inline-flex';
+
+  for (const img of currentList) {
+    const src = `/img/${img.id}`;
+
+    const card = document.createElement('div');
+    card.className = 'card' + (selected.has(img.id) ? ' selected' : '');
+
+    const thumbWrap = document.createElement('div');
+    thumbWrap.className = 'thumb-wrap';
+    const thumb = document.createElement('img');
+    thumb.className = 'thumb';
+    thumb.src = src;
+    thumb.loading = 'lazy';
+    thumb.alt = img.originalName;
+    thumbWrap.appendChild(thumb);
+
+    const checkbox = document.createElement('div');
+    checkbox.className = 'card-check';
+    checkbox.textContent = '✓';
+    checkbox.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (selected.has(img.id)) selected.delete(img.id);
+      else selected.add(img.id);
+      card.classList.toggle('selected', selected.has(img.id));
+      updateBatchBtn();
+    });
+
+    const dimText = img.width && img.height ? `${img.width}×${img.height} · ` : '';
+
+    const body = document.createElement('div');
+    body.className = 'card-body';
+    body.innerHTML = `
+      <div class="card-meta">${dimText}${formatSize(img.size)}</div>
+      <div class="card-actions">
+        <a class="download-btn" href="${src}?download=1">下载 ${img.downloads || 0}</a>
+        <span class="date-tag">${formatDate(img.uploadedAt)}</span>
+      </div>
+    `;
+
+    thumbWrap.addEventListener('click', () => {
+      lbImg.src = src;
+      lbDownload.href = src + '?download=1';
+      lightbox.classList.add('open');
+    });
+
+    card.appendChild(checkbox);
+    card.appendChild(thumbWrap);
+    card.appendChild(body);
+    grid.appendChild(card);
+  }
+}
+
+function updateBatchBtn() {
+  const n = selected.size;
+  batchBtn.textContent = n ? `批量下载 (${n})` : '⬇️ 批量下载';
+}
+
+batchBtn.addEventListener('click', () => {
+  if (!selectMode) {
+    selectMode = true;
+    batchBtn.classList.add('active');
+    batchBtn.textContent = '取消选择';
+    grid.classList.add('selecting');
+    return;
+  }
+  if (selected.size) {
+    const ids = [...selected].join(',');
+    window.location.href = `/api/batch-download?ids=${ids}`;
+  }
+  selectMode = false;
+  batchBtn.classList.remove('active');
+  batchBtn.textContent = '⬇️ 批量下载';
+  grid.classList.remove('selecting');
+  selected.clear();
+  render();
+});
+
+function closeLightbox() { lightbox.classList.remove('open'); lbImg.src = ''; }
+
+document.getElementById('lbClose').addEventListener('click', closeLightbox);
+lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+
+sortSelect.addEventListener('change', loadImages);
+
+loadImages();
+</script>
+</body>
+</html>
