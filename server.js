@@ -29,61 +29,12 @@ if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-// ---- 动图识别：按帧数精确判断 ----
-function countGifFrames(buf) {
-  if (buf.length < 13 || buf.toString('latin1', 0, 6) !== 'GIF87a' && buf.toString('latin1', 0, 6) !== 'GIF89a') {
-    return 0;
-  }
-  let pos = 13;
-  const len = buf.length;
-  if (buf[10] & 0x80) pos += 3 * 2 ** ((buf[10] & 0x07) + 1); // 全局颜色表
-  let frames = 0;
-  while (pos < len) {
-    const marker = buf[pos];
-    if (marker === 0x3b) break; // trailer
-    if (marker === 0x21) { // extension
-      const label = buf[pos + 1];
-      if (label === 0xf9) { // GCE 固定 8 字节
-        pos += 8;
-      } else {
-        pos += 2;
-        while (pos < len && buf[pos] !== 0) pos += buf[pos] + 1; // 子块
-        pos++;
-      }
-    } else if (marker === 0x2c) { // image descriptor
-      frames++;
-      pos += 10;
-      if (buf[pos] & 0x80) pos += 3 * 2 ** ((buf[pos] & 0x07) + 1); // 局部颜色表
-      pos++; // LZW 最小码长
-      while (pos < len && buf[pos] !== 0) pos += buf[pos] + 1; // 图像数据子块
-      pos++;
-    } else {
-      break;
-    }
-  }
-  return frames;
-}
-
-function countWebpFrames(buf) {
-  if (buf.length < 12 || buf.toString('latin1', 0, 4) !== 'RIFF' || buf.toString('latin1', 8, 12) !== 'WEBP') {
-    return 0;
-  }
-  let pos = 12;
-  const len = buf.length;
-  while (pos + 8 <= len) {
-    const chunkId = buf.toString('latin1', pos, pos + 4);
-    const size = buf.readUInt32LE(pos + 4);
-    if (chunkId === 'ANIM') return 1;
-    pos += 8 + size + (size % 2); // chunk 对齐到偶数
-  }
-  return 0;
-}
+// ---- 动图判定：按扩展名简单判断 ----
+const ANIMATED_EXTS = new Set(['gif', 'webp']);
 
 // 返回 true=动图，false=静态
-function detectAnimated(ext, filePath) {
-  if (ext === 'gif') return countGifFrames(fs.readFileSync(filePath)) > 1;
-  if (ext === 'webp') return countWebpFrames(fs.readFileSync(filePath)) > 0;
-  return false;
+function detectAnimated(ext) {
+  return ANIMATED_EXTS.has(ext);
 }
 
 // ---- 数据层：图片元数据持久化到 JSON ----
@@ -99,23 +50,19 @@ async function loadData() {
   }
 }
 
-// 启动时扫描已有图片，补全缺失的 animated 字段
+// 启动时按当前规则重新标记已有图片的动/静分类
 async function backfillAnimated() {
   let changed = false;
   for (const img of images) {
-    if (img.animated !== undefined) continue;
-    const filePath = path.join(UPLOAD_DIR, img.filename);
-    try {
-      img.animated = detectAnimated(img.ext, filePath);
-      changed = true;
-    } catch {
-      img.animated = false; // 文件缺失或损坏，按静态处理
+    const animated = detectAnimated(img.ext);
+    if (img.animated !== animated) {
+      img.animated = animated;
       changed = true;
     }
   }
   if (changed) {
     await saveData();
-    console.log(`已为 ${images.filter((i) => i.animated !== undefined).length} 张图片补全动/静分类`);
+    console.log(`已按当前规则更新 ${images.length} 张图片的动/静分类`);
   }
 }
 
@@ -253,11 +200,7 @@ app.post('/api/upload', requireAdmin, upload.single('image'), async (req, res) =
     // 某些图片（如 SVG 或损坏文件）可能读不出尺寸，忽略即可
   }
 
-  try {
-    animated = detectAnimated(file.originalname.split('.').pop().toLowerCase(), file.path);
-  } catch {
-    // 识别失败按静态处理
-  }
+  animated = detectAnimated(file.originalname.split('.').pop().toLowerCase());
 
   const img = {
     id: crypto.randomUUID(),
