@@ -330,10 +330,9 @@ function render() {
       video.muted = true;
       video.loop = true;
       video.playsInline = true;
-      video.setAttribute('preload', 'metadata');
+      video.setAttribute('preload', 'auto');
       video.addEventListener('mouseenter', () => video.play().catch(() => {}));
       video.addEventListener('mouseleave', () => video.pause());
-      video.addEventListener('click', (e) => { e.stopPropagation(); });
       thumbWrap.appendChild(video);
     } else {
       const thumb = document.createElement('img');
