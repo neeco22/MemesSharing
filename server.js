@@ -21,6 +21,7 @@ import {
   countMemes,
   countUserMemes,
   countFavoriteMemes,
+  countUserConnections,
   databaseHealth,
   createMeme,
   createSession,
@@ -39,6 +40,7 @@ import {
   isFavorite,
   listMemes,
   listFavoriteMemes,
+  listUserConnections,
   listUserMemes,
   listPopularTags,
   migrateLegacyMemes,
@@ -309,6 +311,17 @@ app.get('/api/users/:username/images', (req, res) => {
   if (limit) res.setHeader('X-Total-Count', countUserMemes(user.id));
   res.json(listUserMemes(user.id, { limit: limit || null, offset }));
 });
+
+for (const type of ['followers', 'following']) {
+  app.get(`/api/users/:username/${type}`, (req, res) => {
+    const user = findUserByUsername(req.params.username);
+    if (!user) return res.status(404).json({ error: '用户不存在' });
+    const limit = Math.min(Math.max(Number(req.query.limit) || 60, 1), 60);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    res.setHeader('X-Total-Count', countUserConnections(user.id, type));
+    res.json(listUserConnections(user.id, type, { limit, offset }));
+  });
+}
 
 app.get('/api/me/images', requireAuth, (req, res) => {
   res.json(listUserMemes(req.user.id));

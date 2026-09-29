@@ -405,6 +405,23 @@ function unfollowUser(followerId, followingId) {
   db.prepare('DELETE FROM follows WHERE follower_id = ? AND following_id = ?').run(followerId, followingId);
 }
 
+function countUserConnections(userId, type) {
+  const column = type === 'followers' ? 'following_id' : 'follower_id';
+  return db.prepare(`SELECT COUNT(1) AS count FROM follows WHERE ${column} = ?`).get(userId).count;
+}
+
+function listUserConnections(userId, type, { limit = 60, offset = 0 } = {}) {
+  const joinColumn = type === 'followers' ? 'follows.follower_id' : 'follows.following_id';
+  const filterColumn = type === 'followers' ? 'follows.following_id' : 'follows.follower_id';
+  return db.prepare(`
+    SELECT users.* FROM follows
+    JOIN users ON users.id = ${joinColumn}
+    WHERE ${filterColumn} = ?
+    ORDER BY follows.created_at DESC
+    LIMIT ? OFFSET ?
+  `).all(userId, limit, offset).map(publicUser);
+}
+
 function updateUserProfile(userId, displayName) {
   db.prepare('UPDATE users SET display_name = ?, updated_at = ? WHERE id = ?')
     .run(displayName, Date.now(), userId);
@@ -516,6 +533,7 @@ export {
   countMemes,
   countUserMemes,
   countFavoriteMemes,
+  countUserConnections,
   databaseHealth,
   createMeme,
   createSession,
@@ -534,6 +552,7 @@ export {
   isFavorite,
   listMemes,
   listFavoriteMemes,
+  listUserConnections,
   listUserMemes,
   listPopularTags,
   migrateLegacyMemes,

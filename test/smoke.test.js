@@ -183,6 +183,15 @@ test('核心分享流程端到端验收', async (t) => {
     assert.equal(follow.data.isFollowing, true);
     assert.equal(follow.data.followerCount, 1);
 
+    const followers = await jsonRequest(baseUrl, '/api/users/alice/followers');
+    assert.equal(followers.response.status, 200);
+    assert.deepEqual(followers.data.map(user => user.username), ['bob_user']);
+    assert.equal(followers.response.headers.get('x-total-count'), '1');
+
+    const following = await jsonRequest(baseUrl, '/api/users/bob_user/following');
+    assert.equal(following.response.status, 200);
+    assert.deepEqual(following.data.map(user => user.username), ['alice']);
+
     const privateFavorites = await jsonRequest(baseUrl, '/api/users/bob_user/favorites', { cookie: aliceCookie });
     assert.equal(privateFavorites.response.status, 403);
 

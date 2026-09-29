@@ -163,6 +163,8 @@ curl http://127.0.0.1:3000/api/health
 | DELETE | `/api/images/:id/favorite` | 取消收藏 | 登录 |
 | GET | `/api/users/:username` | 用户主页资料与关注统计 | 无 |
 | GET | `/api/users/:username/images` | 用户公开上传列表 | 无 |
+| GET | `/api/users/:username/followers` | 用户的关注者列表 | 无 |
+| GET | `/api/users/:username/following` | 用户正在关注的账号列表 | 无 |
 | GET | `/api/users/:username/favorites` | 用户收藏列表 | 本人/管理员 |
 | POST | `/api/users/:username/follow` | 关注用户 | 登录 |
 | DELETE | `/api/users/:username/follow` | 取消关注 | 登录 |
