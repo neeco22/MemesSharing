@@ -1,0 +1,13 @@
+.git
+.claude
+node_modules
+test
+*.log
+.env
+.docker.env
+memesharing.db
+memesharing.db-shm
+memesharing.db-wal
+uploads
+deploy-data
+sync.ffs_db

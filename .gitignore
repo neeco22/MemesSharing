@@ -1,5 +1,16 @@
 node_modules/
 uploads/
+avatars/
 data.json
 .env
 *.log
+memesharing.db
+memesharing.db-shm
+memesharing.db-wal
+deploy-data/
+.docker.env
+.deploy-keys/
+.claude/
+sync.ffs_db
+tools/
+public/assets/

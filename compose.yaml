@@ -1,0 +1,18 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file:
+      - .docker.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_FILE: /data/memesharing.db
+      UPLOAD_DIR: /data/uploads
+      AVATAR_DIR: /data/avatars
+      DATA_FILE: /data/data.json
+    volumes:
+      - ./deploy-data:/data
+    init: true

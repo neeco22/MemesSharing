@@ -1,15 +1,18 @@
 {
   "name": "image-share",
   "version": "1.0.0",
-  "description": "简约图片分享站：仅站长上传，访客免登录下载",
+  "description": "支持用户注册、上传和分享的表情包社区",
   "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "start:prod": "npm run build:web && node server.js",
+    "dev": "node server.js",
+    "build:web": "vite build --config vite.config.js",
+    "test": "node --test"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.5"
   },
   "dependencies": {
     "archiver": "^8.0.0",
@@ -17,6 +20,15 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "image-size": "^2.0.2",
-    "multer": "^2.2.0"
+    "lucide-react": "^1.48.0",
+    "multer": "^2.2.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^6.1.1",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.1"
   }
 }
