@@ -173,6 +173,17 @@ test('核心分享流程端到端验收', async (t) => {
     const literalWildcard = await fetch(`${baseUrl}/api/images?tag=${encodeURIComponent('%')}`);
     assert.deepEqual(await literalWildcard.json(), []);
 
+    const batchDownload = await fetch(`${baseUrl}/api/batch-download?ids=${encodeURIComponent(meme.id)}`);
+    assert.equal(batchDownload.status, 200);
+    assert.match(batchDownload.headers.get('content-type'), /application\/zip/);
+    assert.ok((await batchDownload.arrayBuffer()).byteLength > 0);
+    const afterBatchDownload = await jsonRequest(baseUrl, `/api/images/${meme.id}`);
+    assert.equal(afterBatchDownload.data.downloads, 1);
+
+    const tooManyIds = Array.from({ length: 61 }, () => meme.id).join(',');
+    const oversizedBatch = await jsonRequest(baseUrl, `/api/batch-download?ids=${encodeURIComponent(tooManyIds)}`);
+    assert.equal(oversizedBatch.response.status, 400);
+
     const favorite = await jsonRequest(baseUrl, `/api/images/${meme.id}/favorite`, { method: 'POST', cookie: bobCookie });
     assert.equal(favorite.data.favoriteCount, 1);
     const detail = await jsonRequest(baseUrl, `/api/images/${meme.id}`, { cookie: bobCookie });

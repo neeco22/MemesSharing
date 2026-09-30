@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './pwa.js';
 import { createRoot } from 'react-dom/client';
-import { ArrowLeft, ArrowRight, ArrowUpRight, Search, Upload, UserRound } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Download, Search, Upload, UserRound, X } from 'lucide-react';
 import './styles.css';
 
 const PAGE_SIZE = 40;
@@ -38,13 +38,32 @@ function Pagination({ page, totalPages, onChange }) {
   );
 }
 
-function MemeCard({ meme }) {
+function MemeCard({ meme, active, selected, selectionMode, onActivate, onToggleSelected }) {
   const [ready, setReady] = useState(false);
+  const pressTimer = useRef(null);
+  const longPressed = useRef(false);
   const href = `/detail.html?id=${encodeURIComponent(meme.id)}`;
   const ratio = meme.width && meme.height ? `${meme.width}/${meme.height}` : undefined;
+  function cancelLongPress() { if (pressTimer.current) clearTimeout(pressTimer.current); pressTimer.current = null; }
+  function startLongPress(event) {
+    if (event.button !== undefined && event.button !== 0) return;
+    longPressed.current = false;
+    cancelLongPress();
+    pressTimer.current = setTimeout(() => { longPressed.current = true; onToggleSelected(meme.id); }, 520);
+  }
+  function activate(event) {
+    event.preventDefault();
+    if (longPressed.current) { longPressed.current = false; return; }
+    if (selectionMode) { onToggleSelected(meme.id); return; }
+    if (active) location.href = href;
+    else onActivate(meme.id);
+  }
   return (
-    <a href={href} aria-label="查看表情包详情"
-      className="group relative mb-4 block break-inside-avoid overflow-hidden rounded-2xl border border-white/10 bg-white/[.035] shadow-[0_14px_42px_rgba(0,0,0,.25)] transition duration-300 hover:-translate-y-1 hover:border-violet-300/30 hover:shadow-[0_18px_55px_rgba(0,0,0,.42),0_0_32px_rgba(167,139,250,.08)]">
+    <div role="button" tabIndex={0} aria-label={selectionMode ? `${selected?'取消选择':'选择'}表情包` : active ? '再次点击进入表情包详情' : '显示表情包操作'}
+      onClick={activate} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();activate(event)}}}
+      onPointerDown={startLongPress} onPointerUp={cancelLongPress} onPointerCancel={cancelLongPress} onPointerLeave={cancelLongPress}
+      onContextMenu={event=>event.preventDefault()}
+      className={`group relative mb-4 block break-inside-avoid cursor-pointer select-none overflow-hidden rounded-2xl border bg-white/[.035] shadow-[0_14px_42px_rgba(0,0,0,.25)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_55px_rgba(0,0,0,.42),0_0_32px_rgba(167,139,250,.08)] ${selected?'border-violet-300/80 ring-2 ring-violet-400/35':'border-white/10 hover:border-violet-300/30'}`}>
       {!ready && <div className="absolute inset-0 animate-pulse bg-white/[.04]" />}
       {meme.ext === 'webm' ? (
         <video src={`/img/${meme.id}`} style={{ aspectRatio: ratio }} muted loop playsInline preload="metadata"
@@ -54,11 +73,13 @@ function MemeCard({ meme }) {
         <img src={`/img/${meme.id}`} style={{ aspectRatio: ratio }} loading="lazy" alt="表情包" onLoad={() => setReady(true)}
           className="block h-auto w-full object-cover transition duration-500 group-hover:scale-[1.025]" />
       )}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 transition duration-300 group-hover:opacity-100" />
-      <span className="pointer-events-none absolute bottom-3 right-3 flex size-9 translate-y-2 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white opacity-0 backdrop-blur-xl transition duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-        <ArrowUpRight size={17} />
-      </span>
-    </a>
+      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent transition duration-200 ${active||selectionMode?'opacity-100':'opacity-0'}`} />
+      {selected&&<span className="pointer-events-none absolute right-3 top-3 flex size-8 items-center justify-center rounded-full bg-violet-400 text-[#0b0c12] shadow-lg"><Check size={17}/></span>}
+      {active&&!selectionMode&&<div className="absolute inset-x-3 bottom-3 z-10 flex gap-2" onClick={event=>event.stopPropagation()} onPointerDown={event=>event.stopPropagation()}>
+        <a href={`/img/${encodeURIComponent(meme.id)}?download=1`} download className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-400 px-3 py-2.5 text-sm font-semibold text-[#0b0c12] shadow-lg transition hover:bg-violet-300"><Download size={16}/>下载</a>
+        <a href={href} className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/55 px-3 py-2.5 text-sm text-white backdrop-blur-xl transition hover:bg-black/70"><ArrowUpRight size={16}/>详情</a>
+      </div>}
+    </div>
   );
 }
 
@@ -79,6 +100,8 @@ function App() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [standalone, setStandalone] = useState(() => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true);
   const [loading, setLoading] = useState(true);
+  const [activeId, setActiveId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const galleryRef = useRef(null);
 
   const loadImages = useCallback(async () => {
@@ -94,6 +117,7 @@ function App() {
   }, [page, randomSeed, sort, tag]);
 
   useEffect(() => { loadImages(); }, [loadImages]);
+  useEffect(() => { setActiveId(null); }, [page, sort, tag]);
   useEffect(() => {
     Promise.allSettled([fetch('/api/auth'), fetch('/api/tags/popular')]).then(async ([auth, popular]) => {
       if (auth.status === 'fulfilled' && auth.value.ok) setUser((await auth.value.json()).user);
@@ -114,6 +138,9 @@ function App() {
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
   function search(event) { event?.preventDefault(); setTag(query.trim()); setPage(1); }
   function changePage(value) { setPage(value); galleryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  function toggleSelected(id) { setActiveId(null); setSelectedIds(current=>{const next=new Set(current);if(next.has(id))next.delete(id);else if(next.size<60)next.add(id);else alert('一次最多选择 60 张表情包');return next}) }
+  const selectionMode = selectedIds.size > 0;
+  const batchDownloadUrl = `/api/batch-download?ids=${encodeURIComponent([...selectedIds].join(','))}`;
 
   return (
     <div className="app-surface relative min-h-screen overflow-x-hidden text-zinc-100">
@@ -148,18 +175,20 @@ function App() {
         </section>
 
         <section ref={galleryRef} className="scroll-mt-24 pt-14">
-          <div className="mb-6 flex justify-end">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-zinc-600">点击图片显示操作，长按图片可多选下载</p>
             <div className="flex w-fit rounded-xl border border-white/10 bg-white/[.035] p-1 backdrop-blur-xl">
               {[['default','默认排序'],['latest','最新上传'],['downloads','下载最多'],['favorites','收藏最多']].map(([value,label]) => <button key={value} onClick={() => { setSort(value); setPage(1); }} className={`rounded-lg px-3 py-2 text-xs transition sm:px-4 sm:text-sm ${sort === value ? 'bg-white/10 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-200'}`}>{label}</button>)}
             </div>
           </div>
 
           {loading ? <div className="columns-2 gap-3 sm:columns-3 sm:gap-4 lg:columns-4 xl:columns-5">{Array.from({length:15},(_,i)=><div key={i} className="mb-4 h-56 break-inside-avoid animate-pulse rounded-2xl border border-white/[.06] bg-white/[.035]" />)}</div>
-            : items.length ? <div className="columns-2 gap-3 sm:columns-3 sm:gap-4 lg:columns-4 xl:columns-5">{items.map((meme) => <MemeCard key={meme.id} meme={meme} />)}</div>
+            : items.length ? <div className="columns-2 gap-3 sm:columns-3 sm:gap-4 lg:columns-4 xl:columns-5">{items.map((meme) => <MemeCard key={meme.id} meme={meme} active={activeId===meme.id} selected={selectedIds.has(meme.id)} selectionMode={selectionMode} onActivate={setActiveId} onToggleSelected={toggleSelected} />)}</div>
             : <div className="rounded-2xl border border-dashed border-white/10 bg-white/[.025] py-24 text-center text-zinc-500">没有找到相关表情包</div>}
           <Pagination page={page} totalPages={totalPages} onChange={changePage} />
         </section>
       </main>
+      {selectionMode&&<div className="fixed inset-x-0 bottom-4 z-50 mx-auto flex w-[calc(100%-2rem)] max-w-lg items-center gap-3 rounded-2xl border border-white/15 bg-[#11141e]/90 p-3 shadow-[0_20px_80px_rgba(0,0,0,.55)] backdrop-blur-2xl"><button onClick={()=>setSelectedIds(new Set())} aria-label="取消多选" className="flex size-10 shrink-0 items-center justify-center rounded-xl text-zinc-400 transition hover:bg-white/[.07] hover:text-white"><X size={18}/></button><span className="min-w-0 flex-1 text-sm text-zinc-300">已选择 <b className="text-white">{selectedIds.size}</b> 张</span><a href={batchDownloadUrl} download onClick={()=>setTimeout(()=>setSelectedIds(new Set()),500)} className="flex items-center gap-2 rounded-xl bg-violet-400 px-4 py-2.5 text-sm font-semibold text-[#0b0c12] transition hover:bg-violet-300"><Download size={17}/>打包下载</a></div>}
     </div>
   );
 }

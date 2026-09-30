@@ -515,6 +515,7 @@ app.get('/img/:id', async (req, res) => {
 app.get('/api/batch-download', async (req, res) => {
   const ids = String(req.query.ids || '').split(',').filter(Boolean);
   if (!ids.length) return res.status(400).json({ error: '未选择图片' });
+  if (ids.length > 60) return res.status(400).json({ error: '一次最多下载 60 张图片' });
 
   const chosen = ids.map(getMeme).filter(Boolean);
   if (!chosen.length) return res.status(404).json({ error: '图片不存在' });
@@ -528,6 +529,7 @@ app.get('/api/batch-download', async (req, res) => {
   for (const img of chosen) {
     const filePath = path.join(UPLOAD_DIR, img.filename);
     if (fs.existsSync(filePath)) {
+      incrementDownloads(img.id);
       archive.append(fs.createReadStream(filePath), { name: img.originalName });
     }
   }
